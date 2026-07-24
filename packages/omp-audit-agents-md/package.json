@@ -1,0 +1,29 @@
+{
+  "name": "@testzugang/omp-audit-agents-md",
+  "version": "0.1.0",
+  "description": "OMP skill to audit AGENTS.md for clarity and safety rule violations",
+  "keywords": [
+    "omp-plugin"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/testzugang/omp-plugins.git",
+    "directory": "packages/omp-audit-agents-md"
+  },
+  "bugs": {
+    "url": "https://github.com/testzugang/omp-plugins/issues"
+  },
+  "homepage": "https://github.com/testzugang/omp-plugins/tree/main/packages/omp-audit-agents-md#readme",
+  "files": [
+    "skills",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@oh-my-pi/pi-coding-agent": "^17.0.9"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "name": "@testzugang/omp-dependency-audit",
+  "version": "0.1.0",
+  "description": "Static dependency and supply-chain malware auditing skill for OMP",
+  "keywords": [
+    "omp-plugin"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/testzugang/omp-plugins.git",
+    "directory": "packages/omp-dependency-audit"
+  },
+  "bugs": {
+    "url": "https://github.com/testzugang/omp-plugins/issues"
+  },
+  "homepage": "https://github.com/testzugang/omp-plugins/tree/main/packages/omp-dependency-audit#readme",
+  "files": [
+    "skills/dependency-audit/SKILL.md",
+    "skills/dependency-audit/README.md",
+    "skills/dependency-audit/config.json",
+    "skills/dependency-audit/examples",
+    "skills/dependency-audit/rules",
+    "skills/dependency-audit/templates",
+    "skills/dependency-audit/scripts/npm_ts_static_triage.py",
+    "skills/dependency-audit/scripts/omp-check-all-updates.sh",
+    "skills/dependency-audit/scripts/omp-check-current-global-versions.sh",
+    "skills/dependency-audit/scripts/omp-check-git-source-updates.sh",
+    "skills/dependency-audit/scripts/omp-check-latest-npm-versions.sh",
+    "skills/dependency-audit/scripts/omp-default-git-repos.txt",
+    "skills/dependency-audit/scripts/omp-default-packages.txt",
+    "skills/dependency-audit/scripts/omp-interactive-update.py",
+    "skills/dependency-audit/scripts/run_omp_dependency_audit.py",
+    "skills/dependency-audit/scripts/summarize_omp_dependency_audit.py",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@oh-my-pi/pi-coding-agent": "^17.0.9"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

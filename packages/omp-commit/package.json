@@ -1,0 +1,29 @@
+{
+  "name": "@testzugang/omp-commit",
+  "version": "0.1.0",
+  "description": "Interactive gitmoji-based commit skill with staged review for OMP",
+  "keywords": [
+    "omp-plugin"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/testzugang/omp-plugins.git",
+    "directory": "packages/omp-commit"
+  },
+  "bugs": {
+    "url": "https://github.com/testzugang/omp-plugins/issues"
+  },
+  "homepage": "https://github.com/testzugang/omp-plugins/tree/main/packages/omp-commit#readme",
+  "files": [
+    "skills",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@oh-my-pi/pi-coding-agent": "^17.0.9"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

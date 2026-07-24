@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write # ZWINGEND ERFORDERLICH für npm OIDC / Trusted Publisher und Provenance
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          # Keine registry-url hier deklarieren, um "Failed to replace env in config: ${NODE_AUTH_TOKEN}"
+          # während des npm ci-Schritts zu verhindern. Changesets verwaltet die Registry-Ausrichtung selbst.
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run validation
+        run: npm run validate
+      - name: Run tests
+        run: npm test
+
+      - name: Verify release targets
+        env:
+          RELEASE_PACKAGES: >-
+            @testzugang/omp-handoff-session
+            @testzugang/omp-migrate-to-agents-md
+            @testzugang/omp-audit-agents-md
+            @testzugang/omp-commit
+            @testzugang/omp-pr-findings
+            @testzugang/omp-dependency-audit
+        run: |
+          node --input-type=module <<'EOF'
+          import { readdir, readFile } from "node:fs/promises";
+
+          const expected = process.env.RELEASE_PACKAGES.split(/\s+/).filter(Boolean).sort();
+          const entries = await readdir("packages", { withFileTypes: true });
+          const published = (await Promise.all(
+            entries
+              .filter((entry) => entry.isDirectory())
+              .map(async ({ name }) => JSON.parse(await readFile(`packages/${name}/package.json`, "utf8"))),
+          ))
+            .filter((pkg) => !pkg.private)
+            .map((pkg) => pkg.name)
+            .sort();
+
+          if (JSON.stringify(published) !== JSON.stringify(expected)) {
+            throw new Error(`Expected public release packages ${expected.join(", ")}, found ${published.join(", ")}`);
+          }
+          EOF
+
+      - name: Create release PR or publish
+        uses: changesets/action@v1
+        with:
+          version: npm run changeset:version
+          publish: npm run changeset:publish
+          title: "chore: release packages"
+          commit: "chore: release packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Ermöglicht sowohl Token-basiertes Publizieren (falls NPM_TOKEN als Secret existiert)
+          # als auch vollautomatisches, passwortloses OIDC Trusted Publishing (falls NPM_TOKEN leer ist).
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

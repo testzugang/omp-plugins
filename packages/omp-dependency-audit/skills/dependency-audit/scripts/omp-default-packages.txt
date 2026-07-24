@@ -1,0 +1,7 @@
+# Default global OMP plugin packages to audit.
+@testzugang/omp-audit-agents-md
+@testzugang/omp-commit
+@testzugang/omp-dependency-audit
+@testzugang/omp-handoff-session
+@testzugang/omp-migrate-to-agents-md
+@testzugang/omp-pr-findings

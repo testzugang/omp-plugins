@@ -1,0 +1,35 @@
+{
+  "name": "@testzugang/omp-pr-findings",
+  "version": "0.1.0",
+  "description": "Fetch and group GitHub PR review findings by severity in OMP",
+  "keywords": [
+    "omp-plugin"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/testzugang/omp-plugins.git",
+    "directory": "packages/omp-pr-findings"
+  },
+  "bugs": {
+    "url": "https://github.com/testzugang/omp-plugins/issues"
+  },
+  "homepage": "https://github.com/testzugang/omp-plugins/tree/main/packages/omp-pr-findings#readme",
+  "files": [
+    "extensions",
+    "skills",
+    "README.md"
+  ],
+  "omp": {
+    "extensions": [
+      "./extensions"
+    ]
+  },
+  "peerDependencies": {
+    "@oh-my-pi/pi-coding-agent": "^17.0.9"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

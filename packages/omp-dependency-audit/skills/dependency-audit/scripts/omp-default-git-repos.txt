@@ -1,0 +1,2 @@
+# Optional local git checkouts for explicit --repos-file audits.
+# Installed OMP plugins are discovered with `omp plugin list --json`.

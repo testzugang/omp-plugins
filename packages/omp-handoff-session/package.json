@@ -1,0 +1,41 @@
+{
+  "name": "@testzugang/omp-handoff-session",
+  "version": "0.1.0",
+  "description": "Create focused handoffs for new sessions with automated context condensation and preview UI",
+  "type": "module",
+  "main": "extensions/handoff-session/index.ts",
+  "keywords": [
+    "omp-plugin",
+    "omp-extension",
+    "handoff",
+    "session"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/testzugang/omp-plugins.git",
+    "directory": "packages/omp-handoff-session"
+  },
+  "bugs": {
+    "url": "https://github.com/testzugang/omp-plugins/issues"
+  },
+  "homepage": "https://github.com/testzugang/omp-plugins/tree/main/packages/omp-handoff-session#readme",
+  "omp": {
+    "extensions": [
+      "./extensions/handoff-session"
+    ]
+  },
+  "files": [
+    "extensions",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@oh-my-pi/pi-coding-agent": "^17.0.9",
+    "@oh-my-pi/pi-ai": "^17.0.9",
+    "@oh-my-pi/pi-tui": "^17.0.9"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
