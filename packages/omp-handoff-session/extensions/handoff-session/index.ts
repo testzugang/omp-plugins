@@ -154,7 +154,7 @@ async function suggestInitialHandoffOptions(
   args: string,
   ctx: ExtensionCommandContext,
   model: Model<any>,
-  auth: { apiKey: string; headers?: Record<string, string> },
+  apiKey: string,
 ): Promise<{ goal: string; sessionName: string }> {
   const fallbackGoal = args || "Start the next step from this handoff";
 
@@ -176,8 +176,7 @@ async function suggestInitialHandoffOptions(
         messages: [userMessage],
       },
       {
-        apiKey: auth.apiKey,
-        headers: auth.headers,
+        apiKey,
         maxTokens: 300,
         temperature: 0,
       },
@@ -218,8 +217,11 @@ export default function (pi: ExtensionAPI) {
             return;
           }
 
-          const auth = await ctx.modelRegistry.getApiKeyAndHeaders(activeModel);
-          if (!auth.ok || !auth.apiKey) {
+          const apiKey = await ctx.modelRegistry.getApiKey(
+            activeModel,
+            ctx.sessionManager.getSessionId(),
+          );
+          if (!apiKey) {
             notify(
               `Authentication for model ${activeModel.provider}/${activeModel.id} is missing or invalid. Handoff generation aborted.`,
               "error",
@@ -265,7 +267,7 @@ export default function (pi: ExtensionAPI) {
                 systemPrompt: "You are a professional context compactor.",
                 messages: [userMessage],
               },
-              { apiKey: auth.apiKey, headers: auth.headers },
+              { apiKey },
             );
 
             if (response.stopReason === "aborted") {
@@ -313,8 +315,11 @@ export default function (pi: ExtensionAPI) {
           return;
         }
 
-        const auth = await ctx.modelRegistry.getApiKeyAndHeaders(activeModel);
-        if (!auth.ok || !auth.apiKey) {
+        const apiKey = await ctx.modelRegistry.getApiKey(
+          activeModel,
+          ctx.sessionManager.getSessionId(),
+        );
+        if (!apiKey) {
           ctx.ui.notify(
             `Authentication for model ${activeModel.provider}/${activeModel.id} is missing or invalid. Handoff generation aborted.`,
             "error",
@@ -351,10 +356,7 @@ export default function (pi: ExtensionAPI) {
               initialOptions.sessionName,
             );
 
-            void suggestInitialHandoffOptions(args, ctx, activeModel, {
-              apiKey: auth.apiKey,
-              headers: auth.headers,
-            }).then((suggested) => {
+            void suggestInitialHandoffOptions(args, ctx, activeModel, apiKey).then((suggested) => {
               component.applySuggestedDefaults(
                 suggested.goal,
                 suggested.sessionName,
@@ -398,7 +400,7 @@ export default function (pi: ExtensionAPI) {
                     systemPrompt: "You are a professional context compactor.",
                     messages: [userMessage],
                   },
-                  { apiKey: auth.apiKey, headers: auth.headers, signal }, // Pass abort signal to stop in-flight request on escape
+                  { apiKey, signal }, // Pass abort signal to stop in-flight request on escape
                 );
 
                 if (response.stopReason === "aborted") {

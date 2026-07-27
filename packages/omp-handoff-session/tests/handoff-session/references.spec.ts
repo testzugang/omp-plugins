@@ -135,8 +135,11 @@ describe("Reference Utilities", () => {
         mode: "tui",
         model: activeModel,
         modelRegistry: {
-          getApiKeyAndHeaders: async () => ({ ok: true, apiKey: "test-key" }),
+          getApiKey: vi.fn().mockResolvedValue("test-key"),
           getAvailable: () => [activeModel],
+        },
+        sessionManager: {
+          getSessionId: vi.fn().mockReturnValue("test-session"),
         },
         ui: { custom, notify: vi.fn() },
       } as never,

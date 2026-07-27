@@ -78,6 +78,7 @@ function isCompletionRequest(value: unknown): value is CompletionRequest {
 
 describe("Handoff Generator Prompt", () => {
   it("serializes converted LLM messages into the generated handoff history", async () => {
+    completeMock.mockClear();
     completeMock.mockResolvedValue({
       content: [
         {
@@ -108,10 +109,11 @@ describe("Handoff Generator Prompt", () => {
       model: activeModel,
       cwd: process.cwd(),
       modelRegistry: {
-        getApiKeyAndHeaders: vi.fn().mockResolvedValue({ ok: true, apiKey: "test-key" }),
+        getApiKey: vi.fn().mockResolvedValue("test-key"),
         getAvailable: vi.fn().mockReturnValue([activeModel]),
       },
       sessionManager: {
+        getSessionId: vi.fn().mockReturnValue("test-session"),
         getBranch: vi.fn().mockReturnValue([
           {
             type: "custom_message",
@@ -155,6 +157,10 @@ describe("Handoff Generator Prompt", () => {
     // The command consumes only the context fields provided by this focused test.
     const testContext = ctx as unknown as ExtensionCommandContext;
     await registeredHandler!("Continue the handoff", testContext);
+    expect(ctx.modelRegistry.getApiKey).toHaveBeenCalledWith(
+      activeModel,
+      "test-session",
+    );
 
     expect(generatedPrompt).toBe(
       '{"goal":"Continue the handoff","sessionName":"continue-handoff"}',
@@ -168,6 +174,11 @@ describe("Handoff Generator Prompt", () => {
     expect(generatedRequest.messages[0].content[0].text).toContain(
       "converted handoff transcript",
     );
+    expect(completeMock).toHaveBeenCalledTimes(2);
+    for (const call of completeMock.mock.calls) {
+      expect(call[2]).toEqual(expect.objectContaining({ apiKey: "test-key" }));
+      expect(call[2]).not.toHaveProperty("headers");
+    }
   });
 
   it("assembles correct instructions including goal and referenced documents without reading them", () => {
@@ -240,6 +251,7 @@ describe("Handoff Generator Prompt", () => {
     const tempTestDir = path.resolve(process.cwd(), "temp-tests-headless");
     await fs.mkdir(tempTestDir, { recursive: true });
     try {
+      completeMock.mockClear();
       completeMock.mockResolvedValue({
         content: [
           {
@@ -266,10 +278,11 @@ describe("Handoff Generator Prompt", () => {
         model: activeModel,
         cwd: tempTestDir,
         modelRegistry: {
-          getApiKeyAndHeaders: vi.fn().mockResolvedValue({ ok: true, apiKey: "test-key" }),
+          getApiKey: vi.fn().mockResolvedValue("test-key"),
           getAvailable: vi.fn().mockReturnValue([activeModel]),
         },
         sessionManager: {
+          getSessionId: vi.fn().mockReturnValue("test-session"),
           getBranch: vi.fn().mockReturnValue([
             {
               type: "message",
@@ -285,11 +298,61 @@ describe("Handoff Generator Prompt", () => {
       };
 
       await registeredHandler!("Headless goal", ctx as unknown as ExtensionCommandContext);
+      expect(ctx.modelRegistry.getApiKey).toHaveBeenCalledWith(
+        activeModel,
+        "test-session",
+      );
 
       expect(completeMock).toHaveBeenCalled();
+      const generatedCall = completeMock.mock.calls.find((call) =>
+        isCompletionRequest(call[1]),
+      );
+      expect(generatedCall?.[2]).toEqual({ apiKey: "test-key" });
       expect(ctx.newSession).toHaveBeenCalled();
     } finally {
       await fs.rm(tempTestDir, { recursive: true, force: true });
     }
+  });
+  it("aborts before opening the overlay when credentials are unavailable", async () => {
+    completeMock.mockClear();
+    let registeredHandler: RegisteredHandler | undefined;
+    const extension = {
+      registerCommand: (_name: string, command: { handler: RegisteredHandler }) => {
+        registeredHandler = command.handler;
+      },
+      setModel: vi.fn(),
+    };
+    registerHandoffSession(extension as unknown as ExtensionAPI);
+
+    const activeModel = { provider: "test", id: "model" };
+    const ctx = {
+      hasUI: true,
+      mode: "tui",
+      model: activeModel,
+      modelRegistry: {
+        getApiKey: vi.fn().mockResolvedValue(undefined),
+        getAvailable: vi.fn().mockReturnValue([activeModel]),
+      },
+      sessionManager: {
+        getSessionId: vi.fn().mockReturnValue("test-session"),
+      },
+      ui: {
+        notify: vi.fn(),
+        custom: vi.fn(),
+      },
+    };
+
+    await registeredHandler!("", ctx as unknown as ExtensionCommandContext);
+
+    expect(ctx.modelRegistry.getApiKey).toHaveBeenCalledWith(
+      activeModel,
+      "test-session",
+    );
+    expect(ctx.ui.notify).toHaveBeenCalledWith(
+      "Authentication for model test/model is missing or invalid. Handoff generation aborted.",
+      "error",
+    );
+    expect(ctx.ui.custom).not.toHaveBeenCalled();
+    expect(completeMock).not.toHaveBeenCalled();
   });
 });
