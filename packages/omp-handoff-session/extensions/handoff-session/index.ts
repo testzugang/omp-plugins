@@ -10,6 +10,7 @@ import {
 import { complete, type Message, type Model } from "@oh-my-pi/pi-ai";
 import { HandoffOverlayComponent, type HandoffOptions } from "./ui.ts";
 import { parseReferences, autoDetectReferences } from "./references.ts";
+import { createConciseSessionName } from "./naming.ts";
 import {
   buildGeneratorPrompt,
   buildSuggestionPrompt,
@@ -195,11 +196,110 @@ export default function (pi: ExtensionAPI) {
     description: "Start a focused handoff session transition",
     handler: async (args: string, ctx: ExtensionCommandContext) => {
       try {
-        if (!ctx.hasUI || ctx.mode !== "tui") {
-          ctx.ui.notify(
-            "Handoff session command is only available in interactive TUI mode.",
-            "error",
-          );
+        const notify = (msg: string, type: "info" | "error" = "info") => {
+          if (ctx.hasUI && ctx.ui?.notify) {
+            ctx.ui.notify(msg, type);
+          } else {
+            if (type === "error") {
+              console.error(msg);
+            } else {
+              console.log(msg);
+            }
+          }
+        };
+
+        if (!ctx.hasUI) {
+          const activeModel = ctx.model;
+          if (!activeModel) {
+            notify(
+              "No model selected in the current session. Cannot generate handoff.",
+              "error",
+            );
+            return;
+          }
+
+          const auth = await ctx.modelRegistry.getApiKeyAndHeaders(activeModel);
+          if (!auth.ok || !auth.apiKey) {
+            notify(
+              `Authentication for model ${activeModel.provider}/${activeModel.id} is missing or invalid. Handoff generation aborted.`,
+              "error",
+            );
+            return;
+          }
+
+          const goal = args.trim() || "Start the next step from this handoff";
+          const sessionName = createConciseSessionName(goal);
+
+          notify("Generating handoff prompt...", "info");
+
+          try {
+            const manualRefs: string[] = [];
+            const branch = ctx.sessionManager.getBranch();
+            const handoffCtx = prepareHandoffContext(branch);
+            const autoRefs = autoDetectReferences(handoffCtx.messages);
+
+            const generatorInstructions = buildGeneratorPrompt(
+              goal,
+              manualRefs,
+              autoRefs,
+              handoffCtx.compactionSummary,
+            );
+
+            const llmMessages = convertToLlm(handoffCtx.messages);
+            const conversationText = serializeLlmMessages(llmMessages);
+
+            const userMessage: Message = {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: `## Conversation History\n\n${conversationText}\n\n## Generation Instructions\n\n${generatorInstructions}`,
+                },
+              ],
+              timestamp: Date.now(),
+            };
+
+            const response = await complete(
+              activeModel,
+              {
+                systemPrompt: "You are a professional context compactor.",
+                messages: [userMessage],
+              },
+              { apiKey: auth.apiKey, headers: auth.headers },
+            );
+
+            if (response.stopReason === "aborted") {
+              notify("Handoff cancelled.", "info");
+              return;
+            }
+
+            const finalPrompt = contentBlocksToText(response.content);
+
+            const savedFile = await saveHandoffFile(
+              ctx.cwd || process.cwd(),
+              sessionName,
+              finalPrompt,
+            );
+            notify(`Saved handoff record to: ${savedFile}`, "info");
+
+            const activeModelRef = `${activeModel.provider}/${activeModel.id}`;
+            await executeSessionTransition(ctx, finalPrompt, {
+              sessionName,
+              targetModel: activeModelRef,
+              targetModelObject: activeModel,
+              switchTargetModel: createTargetModelSwitcher((model) =>
+                pi.setModel(model),
+              ),
+            });
+            notify(
+              `Successfully transitioned to handoff session '${sessionName}'.`,
+              "info",
+            );
+          } catch (err: unknown) {
+            const errorMsg =
+              err instanceof Error ? err.message : String(err);
+            notify(`Handoff session failed: ${errorMsg}`, "error");
+          }
           return;
         }
 

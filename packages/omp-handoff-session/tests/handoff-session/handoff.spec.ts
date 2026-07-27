@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
 import type {
   ExtensionAPI,
   ExtensionCommandContext,
 } from "@oh-my-pi/pi-coding-agent";
 import type { HandoffOptions } from "../../extensions/handoff-session/ui.ts";
-
 const { completeMock } = vi.hoisted(() => ({
   completeMock: vi.fn(),
 }));
@@ -233,5 +234,62 @@ describe("Handoff Generator Prompt", () => {
       goal: "Fix target model handoff",
       sessionName: "fix-target-model",
     });
+  });
+
+  it("executes headless handoff generation when hasUI is false", async () => {
+    const tempTestDir = path.resolve(process.cwd(), "temp-tests-headless");
+    await fs.mkdir(tempTestDir, { recursive: true });
+    try {
+      completeMock.mockResolvedValue({
+        content: [
+          {
+            type: "text",
+            text: "Headless handoff prompt text",
+          },
+        ],
+      });
+
+      let registeredHandler: RegisteredHandler | undefined;
+      const extension = {
+        registerCommand: (_name: string, command: { handler: RegisteredHandler }) => {
+          registeredHandler = command.handler;
+        },
+        setModel: vi.fn().mockResolvedValue(true),
+      };
+
+      const testExtension = extension as unknown as ExtensionAPI;
+      registerHandoffSession(testExtension);
+
+      const activeModel = { provider: "test", id: "model" };
+      const ctx = {
+        hasUI: false,
+        model: activeModel,
+        cwd: tempTestDir,
+        modelRegistry: {
+          getApiKeyAndHeaders: vi.fn().mockResolvedValue({ ok: true, apiKey: "test-key" }),
+          getAvailable: vi.fn().mockReturnValue([activeModel]),
+        },
+        sessionManager: {
+          getBranch: vi.fn().mockReturnValue([
+            {
+              type: "message",
+              id: "msg-1",
+              parentId: null,
+              timestamp: "2026-07-28T00:00:00.000Z",
+              message: { role: "user", content: "hello" },
+            },
+          ]),
+          getSessionFile: vi.fn().mockReturnValue("session.jsonl"),
+        },
+        newSession: vi.fn().mockResolvedValue(undefined),
+      };
+
+      await registeredHandler!("Headless goal", ctx as unknown as ExtensionCommandContext);
+
+      expect(completeMock).toHaveBeenCalled();
+      expect(ctx.newSession).toHaveBeenCalled();
+    } finally {
+      await fs.rm(tempTestDir, { recursive: true, force: true });
+    }
   });
 });
